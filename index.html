@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg: #0B0C0B;
@@ -587,45 +588,50 @@
     sidebar.classList.toggle('collapsed');
   });
 
-  // ---------------- Widgets ----------------
-  var STORAGE_KEY = 'kafkaXSocialWidgets';
+  // ---------------- Widgets (Supabase: bảng social_channels) ----------------
+  var SUPABASE_URL = 'https://oapfplwvvspkvklldtpf.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_rsIgEmVNK_UkDY-XjoS8vw_cnx4Q5Hk';
+  var sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+  var CHANNEL_TOKEN = '1111a#';
+
   var widgetGrid = document.getElementById('widgetGrid');
   var modalOverlay = document.getElementById('modalOverlay');
+  var widgets = [];
+
+  function checkToken(){
+    var t = prompt('Nhập token để tiếp tục:');
+    if(t === null) return false;
+    if(t !== CHANNEL_TOKEN){ alert('Token không đúng.'); return false; }
+    return true;
+  }
 
   function loadWidgets(){
-    try{
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if(raw) return JSON.parse(raw);
-    }catch(e){}
-    return [
-      { platform:'facebook', label:'VPS Global Travel', url:'https://facebook.com/vpsglobal.travel' },
-      { platform:'tiktok', label:'VPS Global Travel', url:'https://tiktok.com/@vpsglobal.travel' }
-    ];
+    if(!sb){ renderWidgets(); return; }
+    sb.from('social_channels').select('*').order('created_at', { ascending:true })
+      .then(function(res){
+        widgets = res.data || [];
+        renderWidgets();
+      });
   }
-  function saveWidgets(list){
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }catch(e){}
-  }
-
-  var widgets = loadWidgets();
 
   function renderWidgets(){
     widgetGrid.innerHTML = '';
-    widgets.forEach(function(w, idx){
+    widgets.forEach(function(w){
       var a = document.createElement('a');
       a.className = 'widget';
       a.href = w.url;
       a.target = '_blank';
       a.rel = 'noopener';
       a.innerHTML =
-        '<div class="w-del" data-idx="'+idx+'">'+svgIcon('external').replace('external','')+'<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></div>' +
+        '<div class="w-del" data-id="'+w.id+'"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></div>' +
         '<div class="w-icon">'+svgIcon(w.platform)+'</div>' +
-        '<div><div class="w-label">'+escapeHtml(w.label)+'</div><div class="w-url">'+escapeHtml(w.url.replace(/^https?:\/\//,''))+'</div></div>';
+        '<div><div class="w-label">'+escapeHtml(w.label)+'</div><div class="w-url">'+escapeHtml((w.url||'').replace(/^https?:\/\//,''))+'</div></div>';
       var delBtn = a.querySelector('.w-del');
       delBtn.addEventListener('click', function(e){
         e.preventDefault(); e.stopPropagation();
-        widgets.splice(idx, 1);
-        saveWidgets(widgets);
-        renderWidgets();
+        if(!checkToken()) return;
+        if(!sb) return;
+        sb.from('social_channels').delete().eq('id', w.id).then(function(){ loadWidgets(); });
       });
       widgetGrid.appendChild(a);
     });
@@ -633,7 +639,10 @@
     var addTile = document.createElement('div');
     addTile.className = 'widget-add';
     addTile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Thêm kênh</span>';
-    addTile.addEventListener('click', openModal);
+    addTile.addEventListener('click', function(){
+      if(!checkToken()) return;
+      openModal();
+    });
     widgetGrid.appendChild(addTile);
   }
 
@@ -660,13 +669,17 @@
     var platform = document.getElementById('wPlatform').value;
     if(!label || !url){ alert('Nhập đầy đủ tên kênh và đường dẫn nhé.'); return; }
     if(!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    widgets.push({ platform:platform, label:label, url:url });
-    saveWidgets(widgets);
-    renderWidgets();
-    closeModal();
+    if(!sb){ alert('Chưa kết nối được database.'); return; }
+    var newId = 'sc_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+    sb.from('social_channels').insert({ id:newId, platform:platform, label:label, url:url })
+      .then(function(res){
+        if(res.error){ alert('Lỗi khi lưu: ' + res.error.message); return; }
+        closeModal();
+        loadWidgets();
+      });
   });
 
-  renderWidgets();
+  loadWidgets();
 
 })();
 </script>
