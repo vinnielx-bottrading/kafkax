@@ -44,7 +44,7 @@
     display:flex;
     flex-direction:column;
     flex-shrink:0;
-    transition: width 0.32s cubic-bezier(.4,0,.2,1);
+    transition: width 0.32s cubic-bezier(.4,0,.2,1), height 0.32s cubic-bezier(.4,0,.2,1), border-radius 0.32s ease, top 0.32s ease, left 0.32s ease;
     overflow:hidden;
   }
   .sidebar.collapsed{ width:76px; }
@@ -390,8 +390,34 @@
   }
 
   @media (max-width:720px){
-    .sidebar{ position:absolute; z-index:40; height:100%; box-shadow:0 0 0 9999px rgba(0,0,0,0); }
+    .sidebar{ position:absolute; z-index:40; height:100%; }
     #homeView{ padding:28px 20px; }
+
+    .sidebar.collapsed{
+      width:52px;
+      height:52px;
+      border-radius:50%;
+      position:fixed;
+      top:16px;
+      left:16px;
+      overflow:visible;
+      border:0.5px solid var(--line-strong);
+      box-shadow:0 4px 20px rgba(0,0,0,0.45);
+    }
+    .sidebar.collapsed .nav-list,
+    .sidebar.collapsed .sidebar-foot{
+      display:none;
+    }
+    .sidebar.collapsed .brand-row{
+      width:100%;
+      height:100%;
+      padding:0;
+      border-bottom:none;
+      justify-content:center;
+    }
+    .sidebar.collapsed .brand-mark{
+      font-size:17px;
+    }
   }
 </style>
 </head>
@@ -595,7 +621,13 @@
     }, 220);
   }
 
-  document.getElementById('brandRow').addEventListener('click', goHome);
+  document.getElementById('brandRow').addEventListener('click', function(){
+    if(isMobile() && sidebar.classList.contains('collapsed') && activeId){
+      expandSidebar();
+    } else {
+      goHome();
+    }
+  });
 
   var sidebarBackdrop = document.getElementById('sidebarBackdrop');
   function isMobile(){ return window.matchMedia('(max-width:720px)').matches; }
