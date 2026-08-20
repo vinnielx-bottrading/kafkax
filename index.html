@@ -375,14 +375,29 @@
     opacity:0.7;
   }
 
+  .sidebar-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+    z-index:39;
+    opacity:0;
+    transition:opacity 0.25s ease;
+  }
+  .sidebar-backdrop.show{
+    display:block;
+    opacity:1;
+  }
+
   @media (max-width:720px){
-    .sidebar{ position:absolute; z-index:40; height:100%; }
+    .sidebar{ position:absolute; z-index:40; height:100%; box-shadow:0 0 0 9999px rgba(0,0,0,0); }
     #homeView{ padding:28px 20px; }
   }
 </style>
 </head>
 <body>
 
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 <aside class="sidebar" id="sidebar">
   <div class="brand-row" id="brandRow" title="Về trang chủ">
     <span class="brand-mark">K</span>
@@ -582,11 +597,31 @@
 
   document.getElementById('brandRow').addEventListener('click', goHome);
 
-  function collapseSidebar(){ sidebar.classList.add('collapsed'); }
-  function expandSidebar(){ sidebar.classList.remove('collapsed'); }
+  var sidebarBackdrop = document.getElementById('sidebarBackdrop');
+  function isMobile(){ return window.matchMedia('(max-width:720px)').matches; }
+
+  function updateBackdrop(){
+    if(isMobile() && !sidebar.classList.contains('collapsed')){
+      sidebarBackdrop.classList.add('show');
+    } else {
+      sidebarBackdrop.classList.remove('show');
+    }
+  }
+
+  function collapseSidebar(){ sidebar.classList.add('collapsed'); updateBackdrop(); }
+  function expandSidebar(){ sidebar.classList.remove('collapsed'); updateBackdrop(); }
   document.getElementById('toggleBtn').addEventListener('click', function(){
     sidebar.classList.toggle('collapsed');
+    updateBackdrop();
   });
+  sidebarBackdrop.addEventListener('click', function(){
+    collapseSidebar();
+  });
+
+  // Trên điện thoại: mặc định thu gọn sẵn để không che nội dung khi vừa mở trang
+  if(isMobile()){ sidebar.classList.add('collapsed'); }
+  updateBackdrop();
+  window.addEventListener('resize', updateBackdrop);
 
   // ---------------- Widgets (Supabase: bảng social_channels) ----------------
   var SUPABASE_URL = 'https://oapfplwvvspkvklldtpf.supabase.co';
