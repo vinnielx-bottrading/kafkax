@@ -83,6 +83,47 @@
   }
   .sidebar.collapsed .brand-full{ opacity:0; width:0; }
 
+  /* ---------- Holiday banner (flip Kafka X <-> festive marquee) ---------- */
+  .brand-swap{
+    position:relative;
+    height:20px;
+    flex:1;
+    min-width:0;
+    perspective:500px;
+  }
+  .sidebar.collapsed .brand-swap{ opacity:0; width:0; flex:0; }
+  .brand-swap-inner{
+    position:relative;
+    width:100%; height:100%;
+    transform-style:preserve-3d;
+    transition:transform 0.5s cubic-bezier(.4,0,.2,1);
+  }
+  .brand-swap-inner.flipped{ transform:rotateX(180deg); }
+  .brand-face{
+    position:absolute; inset:0;
+    display:flex; align-items:center;
+    backface-visibility:hidden;
+    overflow:hidden;
+    white-space:nowrap;
+  }
+  .brand-face.back{ transform:rotateX(180deg); }
+  .brand-holiday-text{
+    display:inline-block;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:800;
+    font-size:13px;
+    letter-spacing:0.03em;
+    color:var(--glow);
+    text-shadow:0 0 8px var(--glow-soft);
+    padding-left:100%;
+    animation:brandHolidaySlide 6s linear infinite;
+  }
+  @keyframes brandHolidaySlide{
+    0%{ transform:translateX(0); }
+    100%{ transform:translateX(-100%); }
+  }
+
+
   @keyframes glowPulse{
     0%,100%{ text-shadow: 0 0 6px var(--glow-soft), 0 0 18px var(--glow-soft), 0 0 36px rgba(23,232,143,0.2); }
     50%{ text-shadow: 0 0 10px var(--glow-soft), 0 0 26px var(--glow-soft), 0 0 52px rgba(23,232,143,0.3); }
@@ -427,7 +468,16 @@
 <aside class="sidebar" id="sidebar">
   <div class="brand-row" id="brandRow" title="Về trang chủ">
     <span class="brand-mark">K</span>
-    <span class="brand-full">KAFKA X</span>
+    <div class="brand-swap" id="brandSwap">
+      <div class="brand-swap-inner" id="brandSwapInner">
+        <div class="brand-face front">
+          <span class="brand-full">KAFKA X</span>
+        </div>
+        <div class="brand-face back">
+          <span class="brand-holiday-text" id="brandHolidayText"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <nav class="nav-list" id="navList"></nav>
@@ -489,6 +539,33 @@
 
 <script>
 (function(){
+
+  /* ======================================================================
+     CẤU HÌNH BANNER LỄ (logo Kafka X đổi thành chữ chúc mừng theo dịp lễ)
+     ------------------------------------------------------------------
+     Muốn đổi dịp lễ khác, chỉ cần sửa các dòng bên dưới, không cần đụng
+     gì thêm ở chỗ khác trong file này:
+
+       enabled     : true/false — bật/tắt hiệu ứng (tắt nhanh nếu cần)
+       text        : nội dung chữ chạy ngang (có thể thêm emoji)
+       startDate   : ngày bắt đầu hiện hiệu ứng, định dạng 'YYYY-MM-DD'
+       endDate     : ngày cuối cùng còn hiện hiệu ứng (hết ngày này là tắt),
+                     định dạng 'YYYY-MM-DD'
+       flipEveryMs : bao lâu thì lật đổi giữa "KAFKA X" và chữ chúc mừng
+                     (đơn vị mili-giây, 2000 = 2 giây)
+
+     Ví dụ đổi sang Tết Nguyên Đán:
+       text: 'CHÚC MỪNG NĂM MỚI 🧧',
+       startDate: '2027-02-10',
+       endDate: '2027-02-17',
+     ====================================================================== */
+  var HOLIDAY_BANNER = {
+    enabled: true,
+    text: '🎉 CHÚC MỪNG QUỐC KHÁNH 2-9 🎉',
+    startDate: '2026-08-28',
+    endDate: '2026-09-05',
+    flipEveryMs: 2000
+  };
 
   var NAV = [
     { id:'content-planner', label:'Content Planner', url:'https://contentplanner-ten.vercel.app/', icon:'clipboard' },
@@ -628,6 +705,26 @@
       goHome();
     }
   });
+
+  /* ---------- Holiday banner: chạy hiệu ứng nếu đang trong khoảng ngày ---------- */
+  (function initHolidayBanner(){
+    if(!HOLIDAY_BANNER.enabled) return;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var start = new Date(HOLIDAY_BANNER.startDate + 'T00:00:00');
+    var end = new Date(HOLIDAY_BANNER.endDate + 'T23:59:59');
+    if(today < start || today > end) return; // ngoài khoảng ngày -> chỉ hiện "KAFKA X" như bình thường
+
+    var textEl = document.getElementById('brandHolidayText');
+    var innerEl = document.getElementById('brandSwapInner');
+    if(!textEl || !innerEl) return;
+    textEl.textContent = HOLIDAY_BANNER.text;
+
+    var flipped = false;
+    setInterval(function(){
+      flipped = !flipped;
+      innerEl.classList.toggle('flipped', flipped);
+    }, HOLIDAY_BANNER.flipEveryMs);
+  })();
 
   var sidebarBackdrop = document.getElementById('sidebarBackdrop');
   function isMobile(){ return window.matchMedia('(max-width:720px)').matches; }
