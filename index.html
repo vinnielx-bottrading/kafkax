@@ -123,6 +123,35 @@
     100%{ transform:translateX(-100%); }
   }
 
+  /* ---------- Festive light theme (chỉ bật trong khoảng ngày lễ) ---------- */
+  body.holiday-light{
+    --bg: #FDFBF6;
+    --sidebar-bg: #FFFFFF;
+    --panel-bg: #F7F3E8;
+    --card-bg: #FFFFFF;
+    --card-bg-hover: #FFF7E6;
+    --line: rgba(20,20,15,0.10);
+    --line-strong: rgba(20,20,15,0.18);
+    --ink: #1A1A16;
+    --ink-soft: #5B5B52;
+    --ink-muted: #8A897C;
+    --glow: #D4A017;
+    --glow-soft: rgba(212,160,23,0.35);
+    --active-pill: rgba(212,160,23,0.16);
+    --active-line: rgba(212,160,23,0.45);
+  }
+  body.holiday-light .nav-item:hover{ background:rgba(20,20,15,0.05); }
+  body.holiday-light .widget .w-icon{ background:rgba(20,20,15,0.06); }
+  body.holiday-light #frameView iframe{ background:var(--bg); }
+  body.holiday-light .btn-primary{ color:#3A2A00; }
+
+  #fireworksCanvas{
+    position:fixed; inset:0;
+    pointer-events:none;
+    z-index:9998;
+    display:none;
+  }
+
 
   @keyframes glowPulse{
     0%,100%{ text-shadow: 0 0 6px var(--glow-soft), 0 0 18px var(--glow-soft), 0 0 36px rgba(23,232,143,0.2); }
@@ -464,6 +493,7 @@
 </head>
 <body>
 
+<canvas id="fireworksCanvas"></canvas>
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 <aside class="sidebar" id="sidebar">
   <div class="brand-row" id="brandRow" title="Về trang chủ">
@@ -562,9 +592,9 @@
   var HOLIDAY_BANNER = {
     enabled: true,
     text: '🎉 CHÚC MỪNG QUỐC KHÁNH 2-9 🎉',
-    startDate: '2026-08-27',
+    startDate: '2026-08-28',
     endDate: '2026-09-05',
-    flipEveryMs: 4000
+    flipEveryMs: 2000
   };
 
   var NAV = [
@@ -706,13 +736,17 @@
     }
   });
 
-  /* ---------- Holiday banner: chạy hiệu ứng nếu đang trong khoảng ngày ---------- */
-  (function initHolidayBanner(){
-    if(!HOLIDAY_BANNER.enabled) return;
+  /* ---------- Kiểm tra có đang trong khoảng ngày lễ không (dùng chung cho banner + theme sáng + pháo hoa) ---------- */
+  function isHolidayPeriodActive(){
+    if(!HOLIDAY_BANNER.enabled) return false;
     var today = new Date(); today.setHours(0,0,0,0);
     var start = new Date(HOLIDAY_BANNER.startDate + 'T00:00:00');
     var end = new Date(HOLIDAY_BANNER.endDate + 'T23:59:59');
-    if(today < start || today > end) return; // ngoài khoảng ngày -> chỉ hiện "KAFKA X" như bình thường
+    return !(today < start || today > end);
+  }
+
+  (function initHolidayBanner(){
+    if(!isHolidayPeriodActive()) return; // ngoài khoảng ngày -> chỉ hiện "KAFKA X" như bình thường
 
     var textEl = document.getElementById('brandHolidayText');
     var innerEl = document.getElementById('brandSwapInner');
@@ -725,6 +759,71 @@
       innerEl.classList.toggle('flipped', flipped);
     }, HOLIDAY_BANNER.flipEveryMs);
   })();
+
+  /* ---------- Theme sáng + pháo hoa: chỉ bật cùng khoảng ngày với banner ở trên ---------- */
+  (function initHolidayTheme(){
+    if(!isHolidayPeriodActive()) return;
+    document.body.classList.add('holiday-light');
+    startFireworks();
+  })();
+
+  function startFireworks(){
+    var canvas = document.getElementById('fireworksCanvas');
+    if(!canvas || !canvas.getContext) return;
+    canvas.style.display = 'block';
+    var ctx = canvas.getContext('2d');
+
+    function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize();
+    window.addEventListener('resize', resize);
+
+    var particles = [];
+    var colors = ['#FFD700', '#FF4B4B', '#FFFFFF', '#FFB347', '#FF7A7A', '#FFE066'];
+
+    function spawnBurst(){
+      var x = canvas.width * (0.15 + Math.random() * 0.7);
+      var y = canvas.height * (0.12 + Math.random() * 0.35);
+      var color = colors[Math.floor(Math.random() * colors.length)];
+      var count = 36 + Math.floor(Math.random() * 24);
+      for(var i = 0; i < count; i++){
+        var angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+        var speed = 2 + Math.random() * 3.5;
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color: color,
+          size: 1.5 + Math.random() * 1.8
+        });
+      }
+    }
+
+    setInterval(spawnBurst, 1300);
+    // Bắn quả đầu tiên ngay lập tức thay vì đợi hết chu kỳ
+    setTimeout(spawnBurst, 300);
+
+    function tick(){
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for(var i = particles.length - 1; i >= 0; i--){
+        var p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.045; // trọng lực
+        p.vx *= 0.99;  // lực cản không khí nhẹ
+        p.alpha -= 0.012;
+        if(p.alpha <= 0){ particles.splice(i, 1); continue; }
+        ctx.globalAlpha = Math.max(p.alpha, 0);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
 
   var sidebarBackdrop = document.getElementById('sidebarBackdrop');
   function isMobile(){ return window.matchMedia('(max-width:720px)').matches; }
