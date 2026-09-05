@@ -551,6 +551,7 @@
     --word-grad:linear-gradient(120deg,#FFF3C4,#F0C24B 35%,#8FB6DE 68%,#FFF3C4 100%);
     --word-glow:rgba(240,194,75,.55);
     --hint-color:rgba(255,255,255,.75); --hint-bg:rgba(0,0,0,.24);
+    --quote-color:rgba(255,255,255,.88);
   }
   #kfSplash.kf-day{
     --glow-pos-x:10%; --glow-pos-y:4%; --glow-size:40vmin;
@@ -559,6 +560,7 @@
     --word-grad:linear-gradient(120deg,#FFF6B0,#F0C24B 30%,#5FA84A 62%,#2E5C8A 100%);
     --word-glow:rgba(46,92,138,.4);
     --hint-color:#1B3A6B; --hint-bg:rgba(255,255,255,.6);
+    --quote-color:#1B3A2E;
   }
 
   #kfBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 60%;
@@ -604,8 +606,19 @@
   .kf-skip{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);
     font-family:ui-sans-serif,sans-serif;font-weight:500;font-size:12.5px;color:var(--hint-color);
     background:var(--hint-bg);backdrop-filter:blur(6px);padding:7px 14px;border-radius:99px;
-    opacity:0;transition:opacity 1s ease;user-select:none}
+    opacity:0;transition:opacity 1s ease;user-select:none;animation:kfHintPulse 2.2s ease-in-out infinite}
   .kf-skip.kf-show{opacity:1}
+
+  /* ---- Câu danh ngôn đổi theo ngày, hiện phía trên chữ KAFKA ---- */
+  #kfQuote{position:absolute;left:50%;top:26%;transform:translate(-50%,-50%);
+    width:min(680px,84vw);text-align:center;opacity:0;transition:opacity 1.1s ease}
+  #kfQuote.kf-show{opacity:1}
+  #kfQuoteText{margin:0;font-family:'Be Vietnam Pro',ui-sans-serif,sans-serif;font-style:italic;
+    font-weight:500;font-size:clamp(14px,2.1vw,19px);line-height:1.5;color:var(--quote-color);
+    transition:opacity .6s ease}
+  #kfQuoteAuthor{display:block;margin-top:8px;font-size:12px;letter-spacing:.05em;font-weight:600;
+    text-transform:uppercase;color:var(--quote-color);opacity:.7;transition:opacity .6s ease}
+  #kfQuoteText.kf-fading,#kfQuoteAuthor.kf-fading{opacity:0}
 
   @keyframes kfSpin{from{transform:rotate(0)}50%{transform:rotate(180deg) scale(1.04)}to{transform:rotate(360deg)}}
   @keyframes kfPulse{from{transform:scale(1);opacity:.8}to{transform:scale(1.08);opacity:1}}
@@ -613,6 +626,7 @@
   @keyframes kfDrift{0%{opacity:0;transform:translate(0,0)}15%{opacity:.85}85%{opacity:.85}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
   @keyframes kfShimmer{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
   @keyframes kfGlint{0%,100%{opacity:0;transform:scale(.3) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(35deg)}}
+  @keyframes kfHintPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}}
   @keyframes kfFlap{from{transform:scaleX(1) rotate(0deg)}to{transform:scaleX(.35) rotate(6deg)}}
   @keyframes kfFly{
     0%{transform:translate(var(--fx0),var(--fy0)) rotate(var(--fr0))}
@@ -622,7 +636,7 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    #kfGlow,.kf-mote,#kfWord,.kf-glint,.kf-butterfly,.kf-butterfly .wingL,.kf-butterfly .wingR{animation:none !important}
+    #kfGlow,.kf-mote,#kfWord,.kf-glint,.kf-butterfly,.kf-butterfly .wingL,.kf-butterfly .wingR,.kf-skip{animation:none !important}
     .kf-glint,.kf-butterfly{display:none}
   }
 </style>
@@ -638,8 +652,9 @@
   <img id="kfBg" alt="">
   <div id="kfGlow"></div>
   <div id="kfAmbient"></div>
+  <div id="kfQuote"><p id="kfQuoteText"></p><span id="kfQuoteAuthor"></span></div>
   <div id="kfWord">KAFKA</div>
-  <div class="kf-skip" id="kfSkipHint">bấm để bỏ qua</div>
+  <div class="kf-skip" id="kfSkipHint">Bấm vào đây trước khi biến thành bọ 🪲</div>
 </div>
 
 <script>
@@ -652,7 +667,40 @@
   const word = document.getElementById("kfWord");
   const ambient = document.getElementById("kfAmbient");
   const skipHint = document.getElementById("kfSkipHint");
+  const quoteBox = document.getElementById("kfQuote");
+  const quoteText = document.getElementById("kfQuoteText");
+  const quoteAuthor = document.getElementById("kfQuoteAuthor");
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---- Danh ngôn văn học thế giới, đổi theo ngày (cùng 1 ngày luôn thấy như nhau, sang ngày mới sẽ đổi) ----
+  const QUOTES = [
+    {t:"Không cần rời phòng. Cứ ngồi yên tại bàn mà lắng nghe.", a:"Franz Kafka"},
+    {t:"Không có gì mạnh bằng một ý tưởng đúng lúc.", a:"Victor Hugo"},
+    {t:"Cái đẹp sẽ cứu rỗi thế giới.", a:"Fyodor Dostoevsky"},
+    {t:"Vết thương là nơi ánh sáng đi vào bạn.", a:"Rumi"},
+    {t:"Người không nhìn xa ắt có nỗi lo gần.", a:"Khổng Tử"},
+    {t:"Hành trình ngàn dặm bắt đầu từ một bước chân.", a:"Lão Tử"},
+    {t:"Điều gì không giết được ta sẽ khiến ta mạnh hơn.", a:"Friedrich Nietzsche"},
+    {t:"Hãy là chính mình, vì người khác đã có người đóng rồi.", a:"Oscar Wilde"},
+    {t:"Hãy sống sao cho ngày mai bạn không phải hối tiếc.", a:"Mark Twain"},
+    {t:"Can đảm là sự duyên dáng dưới áp lực.", a:"Ernest Hemingway"},
+    {t:"Cả thế giới là một sân khấu.", a:"William Shakespeare"},
+    {t:"Giữa mùa đông, tôi tìm thấy trong mình một mùa hè bất diệt.", a:"Albert Camus"},
+    {t:"Người ta chỉ nhìn rõ mọi thứ bằng trái tim.", a:"Antoine de Saint-Exupéry"},
+    {t:"Hy vọng là thứ có cánh, đậu mãi trong tâm hồn.", a:"Emily Dickinson"},
+    {t:"Đừng khóc vì mặt trời đã lặn — nước mắt sẽ che khuất những vì sao.", a:"Rabindranath Tagore"},
+    {t:"Con cái bạn không thực sự là con của bạn.", a:"Khalil Gibran"},
+    {t:"Ao cũ kia, con ếch nhảy vào, một tiếng nước xao.", a:"Matsuo Bashō"},
+    {t:"Tự do là làm điều đúng, chứ không phải điều mình thích.", a:"Victor Hugo"}
+  ];
+  function dayOfYear(d){
+    const start = new Date(d.getFullYear(),0,0);
+    return Math.floor((d - start) / 86400000);
+  }
+  const doy = dayOfYear(new Date());
+  const qA = QUOTES[doy % QUOTES.length];
+  const qB = QUOTES[(doy + Math.floor(QUOTES.length/2)) % QUOTES.length];
+  const todaysQuotes = [qA, qB];
 
   // Chọn bản NGÀY/ĐÊM theo giờ hệ thống của trình duyệt (giờ địa phương nơi người dùng mở trang).
   const hour = new Date().getHours();
@@ -757,7 +805,10 @@
   if(reduceMotion){
     splash.classList.add("kf-reduced");
     word.classList.add("kf-show");
-    setTimeout(finish, 1600);
+    quoteText.textContent = todaysQuotes[0].t;
+    quoteAuthor.textContent = "— " + todaysQuotes[0].a;
+    quoteBox.classList.add("kf-show");
+    skipHint.classList.add("kf-show");
     splash.addEventListener("click", finish);
     return;
   }
@@ -765,8 +816,27 @@
   setTimeout(()=> word.classList.add("kf-show"), 500);
   setTimeout(()=> skipHint.classList.add("kf-show"), 700);
 
+  // Hiện danh ngôn đầu tiên, rồi cứ vài giây lại mờ-đổi-hiện sang câu còn lại của hôm nay, lặp lại.
+  setTimeout(()=>{
+    quoteText.textContent = todaysQuotes[0].t;
+    quoteAuthor.textContent = "— " + todaysQuotes[0].a;
+    quoteBox.classList.add("kf-show");
+  }, 1200);
+  let qIdx = 0;
+  setInterval(()=>{
+    quoteText.classList.add("kf-fading");
+    quoteAuthor.classList.add("kf-fading");
+    setTimeout(()=>{
+      qIdx = 1 - qIdx;
+      quoteText.textContent = todaysQuotes[qIdx].t;
+      quoteAuthor.textContent = "— " + todaysQuotes[qIdx].a;
+      quoteText.classList.remove("kf-fading");
+      quoteAuthor.classList.remove("kf-fading");
+    }, 600);
+  }, 5500);
+
+  // Trang chào KHÔNG tự chuyển vào trang làm việc nữa — người dùng phải chủ động bấm.
   splash.addEventListener("click", finish);
-  setTimeout(finish, 3600);
 })();
 </script>
 
