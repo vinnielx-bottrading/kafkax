@@ -739,9 +739,12 @@
   function applyMainBg(){
     const mainEl = document.querySelector(".main");
     if(mainEl){
-      mainEl.style.backgroundImage = `linear-gradient(rgba(11,12,11,.88),rgba(11,12,11,.88)), url("${NIGHT_IMG}")`;
+      // Lớp phủ tối giảm từ .88 xuống .62 để hoạ tiết tranh (sao, xoáy trời, ánh trăng)
+      // hiện rõ hơn hẳn ở phần rìa/khoảng trống giữa các thẻ, chữ vẫn đọc tốt nhờ
+      // các thẻ widget có nền riêng (--card-bg) đặt trên.
+      mainEl.style.backgroundImage = `linear-gradient(rgba(9,10,9,.62),rgba(9,10,9,.72)), url("${NIGHT_IMG}")`;
       mainEl.style.backgroundSize = "cover";
-      mainEl.style.backgroundPosition = "center 55%";
+      mainEl.style.backgroundPosition = "center 40%";
       mainEl.style.backgroundRepeat = "no-repeat";
     }
   }
