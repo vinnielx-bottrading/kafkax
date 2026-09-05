@@ -658,9 +658,7 @@
     { id:'du-an', label:'Dự án', url:'https://amoralicproject.vercel.app/', icon:'rocket' },
     { id:'digital-performance', label:'Digital Performance', url:'https://digitalhub-one.vercel.app/', icon:'monitor' },
     { id:'event-layout', label:'Event Layout', url:'https://eventlayout.vercel.app/', icon:'layers' },
-    { id:'trade-marketing', label:'Trade Marketing', url:'https://trademarketing-eight.vercel.app/', icon:'flag' },
-    { id:'cong-viec-nhom', label:'Công việc nhóm', url:'https://congviecnhom.vercel.app/', icon:'check' },
-    { id:'ghi-chu', label:'Ghi chú', url:'https://notes-freeform.vercel.app/', icon:'notes' }
+    { id:'trade-marketing', label:'Trade Marketing', url:'https://trademarketing-eight.vercel.app/', icon:'flag' }
   ];
 
   var ICONS = {
@@ -677,7 +675,8 @@
     instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" stroke="none"/>',
     youtube: '<rect x="2" y="5" width="20" height="14" rx="4"/><path d="M10 9l6 3-6 3z" fill="currentColor" stroke="none"/>',
     zalo: '<circle cx="12" cy="12" r="9"/><path d="M9 9h4l-4 6h4"/>',
-    website: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 14.3 0 18M12 3c-2.5 2.7-2.5 14.3 0 18"/>'
+    website: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 14.3 0 18M12 3c-2.5 2.7-2.5 14.3 0 18"/>',
+    threads: '<circle cx="12" cy="12" r="9"/><path d="M9.5 8.5c0-1.7 1.4-2.8 2.7-2.8 1.7 0 2.8 1.3 2.8 2.6 0 3.1-4.5 2.2-4.5 5.1a2.2 2.2 0 0 0 4.4 0"/>'
   };
 
   function svgIcon(name){
@@ -700,11 +699,6 @@
       '<span class="ic">'+svgIcon(item.icon)+'</span>' +
       '<span class="lb">'+item.label+'</span>' +
       (item.external ? '<span class="ext-ic">'+svgIcon('external')+'</span>' : '');
-    if(idx === NAV.length - 1){
-      var div = document.createElement('div');
-      div.className = 'nav-divider';
-      navList.appendChild(div);
-    }
     el.addEventListener('click', function(){ selectNav(item, el); });
     navList.appendChild(el);
   });
@@ -1048,6 +1042,24 @@
   var modalOverlay = document.getElementById('modalOverlay');
   var widgets = [];
 
+  // Kênh theo dõi cố định (thêm trực tiếp trong code do lỗi lưu qua Supabase).
+  // Muốn thêm kênh mới sau này: copy 1 dòng bên dưới rồi sửa platform/label/url.
+  var STATIC_CHANNELS = [
+    { id:'static_fb_1', platform:'facebook', label:'VIETNAM WELLNESS RETREAT', url:'https://www.facebook.com/VietnamWellnessRetreat', static:true },
+    { id:'static_fb_2', platform:'facebook', label:'VPS GLOBAL - TRAVEL', url:'https://www.facebook.com/vpsglobal.travel/', static:true },
+    { id:'static_fb_3', platform:'facebook', label:'VPS GLOBAL WORKING CAFE', url:'https://www.facebook.com/VPSGlobalWorkingCafe/', static:true },
+    { id:'static_fb_4', platform:'facebook', label:'VPS GLOBAL', url:'https://www.facebook.com/vpsglobal.vn/', static:true },
+    { id:'static_fb_5', platform:'facebook', label:'VPS COMMUNICATIONS', url:'https://www.facebook.com/vpsglobal.communication/', static:true },
+    { id:'static_web_1', platform:'website', label:'VPS GLOBAL - TRAVEL (Website)', url:'https://vpsglobal.vn/travel/', static:true },
+    { id:'static_web_2', platform:'website', label:'VPS GLOBAL (Website)', url:'https://vpsglobal.vn/', static:true },
+    { id:'static_tt_1', platform:'tiktok', label:'VPS Global', url:'https://www.tiktok.com/@vpsglobal', static:true },
+    { id:'static_tt_2', platform:'tiktok', label:'VPS Global - Communications', url:'https://www.tiktok.com/@vpsglobal.communications', static:true },
+    { id:'static_tt_3', platform:'tiktok', label:'VPS Global - Travel', url:'https://www.tiktok.com/@vpsglobal.travel', static:true },
+    { id:'static_tt_4', platform:'tiktok', label:'Đời sống NV Working Café', url:'https://www.tiktok.com/@nv.vps.global.wor', static:true },
+    { id:'static_th_1', platform:'threads', label:'Vietnam Wellness Retreat (Threads)', url:'https://www.threads.com/@vietnam.wellness.retreat?igshid=NTc4MTIwNjQ2YQ==', static:true },
+    { id:'static_ig_1', platform:'instagram', label:'Vietnam Wellness Retreat (Instagram)', url:'https://www.instagram.com/vietnam.wellness.retreat/', static:true }
+  ];
+
   function checkToken(){
     var t = prompt('Nhập token để tiếp tục:');
     if(t === null) return false;
@@ -1056,10 +1068,10 @@
   }
 
   function loadWidgets(){
-    if(!sb){ renderWidgets(); return; }
+    if(!sb){ widgets = STATIC_CHANNELS.slice(); renderWidgets(); return; }
     sb.from('social_channels').select('*').order('created_at', { ascending:true })
       .then(function(res){
-        widgets = res.data || [];
+        widgets = STATIC_CHANNELS.concat(res.data || []);
         renderWidgets();
       });
   }
@@ -1073,16 +1085,18 @@
       a.target = '_blank';
       a.rel = 'noopener';
       a.innerHTML =
-        '<div class="w-del" data-id="'+w.id+'"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></div>' +
+        (w.static ? '' : '<div class="w-del" data-id="'+w.id+'"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg></div>') +
         '<div class="w-icon">'+svgIcon(w.platform)+'</div>' +
         '<div><div class="w-label">'+escapeHtml(w.label)+'</div><div class="w-url">'+escapeHtml((w.url||'').replace(/^https?:\/\//,''))+'</div></div>';
-      var delBtn = a.querySelector('.w-del');
-      delBtn.addEventListener('click', function(e){
-        e.preventDefault(); e.stopPropagation();
-        if(!checkToken()) return;
-        if(!sb) return;
-        sb.from('social_channels').delete().eq('id', w.id).then(function(){ loadWidgets(); });
-      });
+      if(!w.static){
+        var delBtn = a.querySelector('.w-del');
+        delBtn.addEventListener('click', function(e){
+          e.preventDefault(); e.stopPropagation();
+          if(!checkToken()) return;
+          if(!sb) return;
+          sb.from('social_channels').delete().eq('id', w.id).then(function(){ loadWidgets(); });
+        });
+      }
       widgetGrid.appendChild(a);
     });
 
